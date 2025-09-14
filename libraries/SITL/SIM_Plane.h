@@ -28,6 +28,10 @@ namespace SITL {
 /*
   a very simple plane simulator
  */
+struct Wrench {
+        Vector3f F; // body forces [Nx, Ny, Nz]
+        Vector3f M; // body moments [L, M, N]
+    };
 class Plane : public Aircraft {
 public:
     Plane(const char *frame_str);
@@ -48,47 +52,96 @@ protected:
     const struct Coefficients {
         // from last_letter skywalker_2013/aerodynamics.yaml
         // thanks to Georacer!
-        float s = 0.45;
-        float b = 1.88;
-        float c = 0.24;
-        float c_lift_0 = 0.56;
-        float c_lift_deltae = 0;
-        float c_lift_a = 6.9;
+        // float s = 0.45;
+        // float b = 1.88;
+        // float c = 0.24;
+        // float c_lift_0 = 0.56;
+        // float c_lift_deltae = 0;
+        // float c_lift_a = 6.9;
+        // float c_lift_q = 0;
+        // float mcoeff = 50;
+        // float oswald = 0.9;
+        // float alpha_stall = 0.4712;
+        // float c_drag_q = 0;
+        // float c_drag_deltae = 0.0;
+        // float c_drag_p = 0.1;
+        // float c_y_0 = 0;
+        // float c_y_b = -0.98;
+        // float c_y_p = 0;
+        // float c_y_r = 0;
+        // float c_y_deltaa = 0;
+        // float c_y_deltar = -0.2;
+        // float c_l_0 = 0;
+        // float c_l_p = -1.0;
+        // float c_l_b = -0.12;
+        // float c_l_r = 0.14;
+        // float c_l_deltaa = 0.25;
+        // float c_l_deltar = -0.037;
+        // float c_m_0 = 0.045;
+        // float c_m_a = -0.7;
+        // float c_m_q = -20;
+        // float c_m_deltae = 1.0;
+        // float c_n_0 = 0;
+        // float c_n_b = 0.25;
+        // float c_n_p = 0.022;
+        // float c_n_r = -1;
+        // float c_n_deltaa = 0.00;
+        // float c_n_deltar = 0.1;
+        // float deltaa_max = 0.3491;
+        // float deltae_max = 0.3491;
+        // float deltar_max = 0.3491;
+        
+        // // the X CoG offset should be -0.02, but that makes the plane too tail heavy
+        // // in manual flight. Adjusted to -0.15 gives reasonable flight
+        // Vector3f CGOffset{-0.15, 0, -0.05};
+
+        //mass=60.0;
+        //v=35;
+        //rho= 1.225;
+        float s = 0.9;
+        float b = 3.0;
+        float c = 0.3;
+        float c_lift_0 = 0.2421;
+        float c_lift_deltae = -1.3487; //negated to satisfy ardupilot. 
+        float c_lift_a = 6.272;
         float c_lift_q = 0;
         float mcoeff = 50;
         float oswald = 0.9;
         float alpha_stall = 0.4712;
-        float c_drag_q = 0;
-        float c_drag_deltae = 0.0;
-        float c_drag_p = 0.1;
-        float c_y_0 = 0;
-        float c_y_b = -0.98;
+        float c_drag_0 = 0.025;
+        float c_drag_q = 0.257;
+        float c_drag_deltae = 0.1145;
+        float c_drag_p = 0.1;  //Ignored in force calculations.
+        float c_drag_a = 0.68;
+        float c_y_0 = 0;      
+        float c_y_b = -0.344; 
         float c_y_p = 0;
         float c_y_r = 0;
         float c_y_deltaa = 0;
-        float c_y_deltar = -0.2;
-        float c_l_0 = 0;
-        float c_l_p = -1.0;
-        float c_l_b = -0.12;
-        float c_l_r = 0.14;
-        float c_l_deltaa = 0.25;
-        float c_l_deltar = -0.037;
-        float c_m_0 = 0.045;
-        float c_m_a = -0.7;
-        float c_m_q = -20;
-        float c_m_deltae = 1.0;
+        float c_y_deltar = -0.115; // negated to satisfy ardupilot
+        float c_l_0 = 0.0002;
+        float c_l_p = -0.6481;
+        float c_l_b = -0.0145; 
+        float c_l_r =  0.1920; 
+        float c_l_deltaa = 0.1745; // negated to satisfy ardupilot
+        float c_l_deltar = -0.0219; //negated to satisfy ardupilot
+        // float c_m_0 = 0.2291;
+        // float c_m_a = -1.325;
+        float c_m_0 = 1.6;
+        float c_m_a = -1.2; //THIS MIGHT COME TRUE AT TAKEOFF
+        float c_m_q = -95.2255; 
+        float c_m_deltae = 6.23; // We negated the openvsp data to satisy ardupilot convention
         float c_n_0 = 0;
-        float c_n_b = 0.25;
-        float c_n_p = 0.022;
-        float c_n_r = -1;
-        float c_n_deltaa = 0.00;
-        float c_n_deltar = 0.1;
+        float c_n_b = +0.00213; ///CFD Data 
+        float c_n_p = -0.0821; 
+        float c_n_r = -0.1206; 
+        float c_n_deltaa = -0.0025; //negated to satisfy ardupilot
+        float c_n_deltar = 0.0458;  // negated to satisfy ardupilot
         float deltaa_max = 0.3491;
         float deltae_max = 0.3491;
         float deltar_max = 0.3491;
-        // the X CoG offset should be -0.02, but that makes the plane too tail heavy
-        // in manual flight. Adjusted to -0.15 gives reasonable flight
-        Vector3f CGOffset{-0.15, 0, -0.05};
+        Vector3f CGOffset{0, 0, 0};
+
     } default_coefficients;
 
     struct Coefficients coefficient;
@@ -123,14 +176,18 @@ protected:
         slewrate,
         true
     };
-
+    
+    
     // load aero coefficients from a json model file
     void load_coeffs(const char *model_json);
     float liftCoeff(float alpha) const;
     float dragCoeff(float alpha) const;
     Vector3f getForce(float inputAileron, float inputElevator, float inputRudder) const;
     Vector3f getTorque(float inputAileron, float inputElevator, float inputRudder, float inputThrust, const Vector3f &force) const;
-    void calculate_forces(const struct sitl_input &input, Vector3f &rot_accel);
+    SITL::Wrench getForcesAndMoments(float inputAileron, float inputElevator,
+                               float inputRudder, float inputThrust,
+                               const struct sitl_input &input,bool fm);
+    void calculate_forces(const struct sitl_input &input, Vector3f &rot_accel,bool fm);
 
 private:
     // json parsing helpers (TODO reduce code duplication)

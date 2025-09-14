@@ -116,7 +116,9 @@ void QuadPlane::update(const struct sitl_input &input)
 
     // first plane forces
     Vector3f rot_accel;
-    calculate_forces(input, rot_accel);
+    bool flightmode = 0;
+
+    calculate_forces(input, rot_accel,flightmode);
 
     // now quad forces
     Vector3f quad_rot_accel;
