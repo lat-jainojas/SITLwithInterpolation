@@ -36,148 +36,148 @@
 // #include "aero_knn.cpp"
 // #include "aero_knn.h"
 
-// // The following code is for EQUINOX's SITL Model
-// #ifndef M_PI
-// #define M_PI 3.14159265358979323846
-// #endif
+// The following code is for EQUINOX's SITL Model
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
-// // clamp helper
-// static inline double clamp_double(double v, double lo, double hi) {
-//     if (v < lo) return lo;
-//     if (v > hi) return hi;
-//     return v;
-// }
+// clamp helper
+static inline double clamp_double(double v, double lo, double hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+}
 
-// /*
-//  * compute_n_from_throttle
-//  * - Uses expression: n = (19771*throttle - 1896.4)/60
-//  * - throttle expected in [0,1]. We clamp n to a safe minimum to avoid negative or zero rpm.
-//  */
-// static inline double compute_n_from_throttle(double throttle) {
-//     double n = (19771.0 * throttle - 1896.4) / 60.0;
-//     // guard against negative or zero spin; choose 1.0 rps as safe minimum
-//     if (n < 1.0) n = 1.0;
-//     return n;
-// }
+/*
+ * compute_n_from_throttle
+ * - Uses expression: n = (19771*throttle - 1896.4)/60
+ * - throttle expected in [0,1]. We clamp n to a safe minimum to avoid negative or zero rpm.
+ */
+static inline double compute_n_from_throttle(double throttle) {
+    double n = (19771.0 * throttle - 1896.4) / 60.0;
+    // guard against negative or zero spin; choose 1.0 rps as safe minimum
+    if (n < 1.0) n = 1.0;
+    return n;
+}
 
-// /*
-//  * compute_Cmu
-//  * J = V_inf / (n * D)
-//  * D is in meters (user specified D = 0.120 m)
-//  * Cmu = 0.376284/(J^2.05254) + 0.035986
-//  *
-//  * We guard small airspeed by forcing a minimum V_inf for numeric stability.
-//  */
-// static inline double compute_Cmu(double V_inf, double n, double D = 0.120) {
-//     // avoid division by zero / extremely small J
-//     double Vsafe = (V_inf < 0.1) ? 0.1 : V_inf;       // 0.1 m/s min
-//     double J = Vsafe / (n * D);
-//     if (J < 1e-6) J = 1e-6;
-//     double Cmu = 0.376284 / pow(J, 2.05254) + 0.035986;
-//     return Cmu;
-// }
+/*
+ * compute_Cmu
+ * J = V_inf / (n * D)
+ * D is in meters (user specified D = 0.120 m)
+ * Cmu = 0.376284/(J^2.05254) + 0.035986
+ *
+ * We guard small airspeed by forcing a minimum V_inf for numeric stability.
+ */
+static inline double compute_Cmu(double V_inf, double n, double D = 0.120) {
+    // avoid division by zero / extremely small J
+    double Vsafe = (V_inf < 0.1) ? 0.1 : V_inf;       // 0.1 m/s min
+    double J = Vsafe / (n * D);
+    if (J < 1e-6) J = 1e-6;
+    double Cmu = 0.376284 / pow(J, 2.05254) + 0.035986;
+    return Cmu;
+}
 
-// /*
-//  * compute_CL_from_model
-//  * Implements exact formula:
-//  *   CL = CL0 + CL_alpha*Alpha + CL_del_e*del_e + CL_del_f*del_f + CL_Cmu*Cmu + CL_del_a*del_a
-//  * with:
-//  *   CL0 = -1.36422*Cmu + 0.2979
-//  *   CL_alpha = 2*PI*(1+0.151*(Cmu)^0.5 + 0.219*Cmu)*PI/180
-//  *   CL_del_e = 0.0141
-//  *   CL_Cmu = 3.168
-//  *   CL_del_f = 0.0459*Cmu + 0.0135
-//  *   CL_del_a = 0
-//  *
-//  * Notes:
-//  * - alpha_deg, del_*_deg must be in degrees (the CL_alpha factor includes a deg->rad scaling in formula).
-//  * - throttle only needed to compute Cmu via n.
-//  */
-// static inline double compute_CL_from_model(double alpha_deg,
-//                                            double del_e_deg,
-//                                            double del_f_deg,
-//                                            double del_a_deg,
-//                                            double throttle,
-//                                            double V_inf) 
-// {
-//     // compute rotor speed n (rps)
-//     double n = compute_n_from_throttle(throttle);
+/*
+ * compute_CL_from_model
+ * Implements exact formula:
+ *   CL = CL0 + CL_alpha*Alpha + CL_del_e*del_e + CL_del_f*del_f + CL_Cmu*Cmu + CL_del_a*del_a
+ * with:
+ *   CL0 = -1.36422*Cmu + 0.2979
+ *   CL_alpha = 2*PI*(1+0.151*(Cmu)^0.5 + 0.219*Cmu)*PI/180
+ *   CL_del_e = 0.0141
+ *   CL_Cmu = 3.168
+ *   CL_del_f = 0.0459*Cmu + 0.0135
+ *   CL_del_a = 0
+ *
+ * Notes:
+ * - alpha_deg, del_*_deg must be in degrees (the CL_alpha factor includes a deg->rad scaling in formula).
+ * - throttle only needed to compute Cmu via n.
+ */
+static inline double compute_CL_from_model(double alpha_deg,
+                                           double del_e_deg,
+                                           double del_f_deg,
+                                           double del_a_deg,
+                                           double throttle,
+                                           double V_inf) 
+{
+    // compute rotor speed n (rps)
+    double n = compute_n_from_throttle(throttle);
 
-//     // compute Cmu
-//     double Cmu = compute_Cmu(V_inf, n, 0.120);
+    // compute Cmu
+    double Cmu = compute_Cmu(V_inf, n, 0.120);
 
-//     // coefficients
-//     double CL0 = -1.36422 * Cmu + 0.2979;
-//     double CL_alpha = 2.0 * M_PI * (1.0 + 0.151 * sqrt(Cmu) + 0.219 * Cmu) * (M_PI / 180.0);
-//     double CL_del_e = 0.0141;
-//     double CL_Cmu = 3.168;
-//     double CL_del_f = 0.0459 * Cmu + 0.0135;
-//     double CL_del_a = 0.0;
+    // coefficients
+    double CL0 = -1.36422 * Cmu + 0.2979;
+    double CL_alpha = 2.0 * M_PI * (1.0 + 0.151 * sqrt(Cmu) + 0.219 * Cmu) * (M_PI / 180.0);
+    double CL_del_e = 0.0141;
+    double CL_Cmu = 3.168;
+    double CL_del_f = 0.0459 * Cmu + 0.0135;
+    double CL_del_a = 0.0;
 
-//     double CL = CL0
-//                 + CL_alpha * alpha_deg
-//                 + CL_del_e * del_e_deg
-//                 + CL_del_f * del_f_deg
-//                 + CL_Cmu * Cmu
-//                 + CL_del_a * del_a_deg;
+    double CL = CL0
+                + CL_alpha * alpha_deg
+                + CL_del_e * del_e_deg
+                + CL_del_f * del_f_deg
+                + CL_Cmu * Cmu
+                + CL_del_a * del_a_deg;
 
-//     return CL;
-// }
+    return CL;
+}
 
 
-// // ----------------- compute_CD_from_model -----------------
-// // CL_linear is the dimensionless lift coefficient (from analytic model).
-// // alpha_deg, del_*_deg are in DEGREES.
-// // throttle in [0,1], V_inf in m/s.
-// static inline double compute_CD_from_model(double CL_linear,
-//                                            double alpha_deg,
-//                                            double del_e_deg,
-//                                            double del_f_deg,
-//                                            double del_a_deg,
-//                                            double throttle,
-//                                            double V_inf)
-// {
-//     // 1) compute Cmu (re-uses compute_n_from_throttle / compute_Cmu)
-//     double n = compute_n_from_throttle(throttle);
-//     double Cmu = compute_Cmu(V_inf, n, 0.120);
+// ----------------- compute_CD_from_model -----------------
+// CL_linear is the dimensionless lift coefficient (from analytic model).
+// alpha_deg, del_*_deg are in DEGREES.
+// throttle in [0,1], V_inf in m/s.
+static inline double compute_CD_from_model(double CL_linear,
+                                           double alpha_deg,
+                                           double del_e_deg,
+                                           double del_f_deg,
+                                           double del_a_deg,
+                                           double throttle,
+                                           double V_inf)
+{
+    // 1) compute Cmu (re-uses compute_n_from_throttle / compute_Cmu)
+    double n = compute_n_from_throttle(throttle);
+    double Cmu = compute_Cmu(V_inf, n, 0.120);
 
-//     // 2) CD0 base pieces
-//     // CD0c = -0.51403*Cmu + 0.107575
-//     double CD0c = -0.51403 * Cmu + 0.107575;
+    // 2) CD0 base pieces
+    // CD0c = -0.51403*Cmu + 0.107575
+    double CD0c = -0.51403 * Cmu + 0.107575;
 
-//     // CD0_del_f term ( "0.01285*del_f + 0.0021")
-//     // Interpret: component = 0.01285 * del_f_deg + 0.0021
-//     double CD0_del_f_term = 0.01285 * del_f_deg + 0.0021;
+    // CD0_del_f term ( "0.01285*del_f + 0.0021")
+    // Interpret: component = 0.01285 * del_f_deg + 0.0021
+    double CD0_del_f_term = 0.01285 * del_f_deg + 0.0021;
 
-//     // CD0 = CD0c + CD0_alpha*alpha + CD0_del_e*del_e + CD0_del_f_term + CD0_del_a*del_a + CD0_Cmu*Cmu
-//     // CD0_alpha = 0, CD0_del_e = 0.0038, CD0_del_a = 0.0015, CD0_Cmu = 1.322175
-//     double CD0_alpha = 0.0;
-//     double CD0_del_e = 0.0038;
-//     double CD0_del_a = 0.0015;
-//     double CD0_Cmu   = 1.322175;
+    // CD0 = CD0c + CD0_alpha*alpha + CD0_del_e*del_e + CD0_del_f_term + CD0_del_a*del_a + CD0_Cmu*Cmu
+    // CD0_alpha = 0, CD0_del_e = 0.0038, CD0_del_a = 0.0015, CD0_Cmu = 1.322175
+    double CD0_alpha = 0.0;
+    double CD0_del_e = 0.0038;
+    double CD0_del_a = 0.0015;
+    double CD0_Cmu   = 1.322175;
 
-//     double CD0 = CD0c
-//                  + CD0_alpha * alpha_deg
-//                  + CD0_del_e * del_e_deg
-//                  + CD0_del_f_term
-//                  + CD0_del_a * del_a_deg
-//                  + CD0_Cmu * Cmu;
+    double CD0 = CD0c
+                 + CD0_alpha * alpha_deg
+                 + CD0_del_e * del_e_deg
+                 + CD0_del_f_term
+                 + CD0_del_a * del_a_deg
+                 + CD0_Cmu * Cmu;
 
-//     // 3) k interpolation vs flap angle del_f_deg
-//     // k = 0.046 at del_f = 0 deg
-//     // k = 0.056 at del_f = 40 deg
-//     double del_f_clamped = del_f_deg;
-//     if (del_f_clamped < 0.0) del_f_clamped = 0.0;
-//     if (del_f_clamped > 40.0) del_f_clamped = 40.0;
-//     const double k0 = 0.046;
-//     const double k40 = 0.056;
-//     double k = k0 + (del_f_clamped / 40.0) * (k40 - k0);
+    // 3) k interpolation vs flap angle del_f_deg
+    // k = 0.046 at del_f = 0 deg
+    // k = 0.056 at del_f = 40 deg
+    double del_f_clamped = del_f_deg;
+    if (del_f_clamped < 0.0) del_f_clamped = 0.0;
+    if (del_f_clamped > 40.0) del_f_clamped = 40.0;
+    const double k0 = 0.046;
+    const double k40 = 0.056;
+    double k = k0 + (del_f_clamped / 40.0) * (k40 - k0);
 
-//     // 4) final CD
-//     double CD = CD0 + k * (CL_linear * CL_linear);
+    // 4) final CD
+    double CD = CD0 + k * (CL_linear * CL_linear);
 
-//     return CD;
-// }
+    return CD;
+}
 
 
 
